@@ -1,0 +1,140 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.zeelos.leshan.kafka.streams</groupId>
+    <artifactId>kafka-streams-leshan</artifactId>
+    <packaging>jar</packaging>
+    <version>0.1-SNAPSHOT</version>
+
+    <name>kafka-streams-leshan</name>
+    <description>A list of Kafka stream analytic applications interfacing with Leshan streams.</description>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>cvasilak</id>
+            <name>Christos Vasilakis</name>
+            <email>cvasilak@gmail.com</email>
+        </developer>
+    </developers>
+
+    <properties>
+        <kafka.version>1.1.1-cp1</kafka.version>
+        <confluent.version>4.1.1</confluent.version>
+        <leshan-avro-shema.version>0.1-SNAPSHOT</leshan-avro-shema.version>
+        <jboss.logging>3.3.0.Final</jboss.logging>
+        <junit.version>4.12</junit.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams</artifactId>
+            <version>${kafka.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafka.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-streams-avro-serde</artifactId>
+            <version>${confluent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging</artifactId>
+            <version>${jboss.logging}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.zeelos.leshan.avro</groupId>
+            <artifactId>leshan-avro-schema</artifactId>
+            <version>${leshan-avro-shema.version}</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.0.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.5.1</version>
+                <inherited>true</inherited>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>io.zeelos.leshan.kafka.streams.SimpleAnalyticsStreamsApp</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptors>
+                        <descriptor>src/main/assembly/package.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
+    <repositories>
+        <repository>
+            <id>confluent</id>
+            <url>http://packages.confluent.io/maven/</url>
+        </repository>
+    </repositories>
+</project>
