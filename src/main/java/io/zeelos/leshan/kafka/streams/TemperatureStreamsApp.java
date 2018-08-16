@@ -28,8 +28,6 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.streams.kstream.internals.WindowedDeserializer;
-import org.apache.kafka.streams.kstream.internals.WindowedSerializer;
 
 import java.util.Collections;
 import java.util.Map;
@@ -93,8 +91,8 @@ public class TemperatureStreamsApp {
         final SpecificAvroSerde<AvroResponseObserve> serdeAvroResponse = new SpecificAvroSerde<>();
         serdeAvroResponse.configure(serdeAvroConfig, false);
 
-        final WindowedSerializer<AvroKey> windowedSerializer = new WindowedSerializer<>(serdeAvroKey.serializer());
-        final WindowedDeserializer<AvroKey> windowedDeserializer = new WindowedDeserializer<>(serdeAvroKey.deserializer());
+        final TimeWindowedSerializer<AvroKey> windowedSerializer = new TimeWindowedSerializer<>(serdeAvroKey.serializer());
+        final TimeWindowedDeserializer<AvroKey> windowedDeserializer = new TimeWindowedDeserializer<>(serdeAvroKey.deserializer());
         final Serde<Windowed<AvroKey>> serdeWindowed = Serdes.serdeFrom(windowedSerializer, windowedDeserializer);
         serdeWindowed.configure(serdeAvroConfig, true);
 
@@ -127,6 +125,6 @@ public class TemperatureStreamsApp {
 
         maxReadingByEPAndPath.to(observationsAnalyticTopic, Produced.with(serdeWindowed, serdeAvroResponse));
 
-        return new KafkaStreams(builder.build(), new StreamsConfig(config));
+        return new KafkaStreams(builder.build(), config);
     }
 }
