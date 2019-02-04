@@ -14,35 +14,40 @@
 
 package io.zeelos.leshan.kafka.streams;
 
+import static io.zeelos.leshan.kafka.streams.utils.Utils.getResource;
+import static io.zeelos.leshan.kafka.streams.utils.Utils.sslProperties;
+
+import java.time.Duration;
+import java.util.Properties;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Printed;
+import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
+
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import io.zeelos.leshan.avro.AvroKey;
 import io.zeelos.leshan.avro.response.AvroResponseObserve;
 import io.zeelos.leshan.kafka.streams.utils.LeshanTimestampExtractor;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.*;
-
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-
-import static io.zeelos.leshan.kafka.streams.utils.Utils.getResource;
-import static io.zeelos.leshan.kafka.streams.utils.Utils.sslProperties;
 
 public class SimpleAnalyticsStreamsApp {
-
     public static void main(String[] args) {
         final String bootstrapServers = args.length > 0 ? args[0] : "localhost:9092";
         final String schemaRegistryUrl = args.length > 1 ? args[1] : "http://localhost:8081";
         final String observationsTopic = args.length > 2 ? args[2] : "iot.server1.observations";
-        final String sslConfigFile = args.length > 3 ? args[3] : "client_security.properties";
-
+        final String stateDir = args.length > 3 ? args[3] : "/tmp/kafka-streams-leshan";
+        final String sslConfigFile = args.length > 4 ? args[4] : "client_security.properties";
+    
         final KafkaStreams streams = buildStream(
                 bootstrapServers,
                 schemaRegistryUrl,
-                "/tmp/kafka-streams",
+                stateDir,
                 observationsTopic,
                 sslProperties(sslConfigFile));
 
@@ -83,13 +88,13 @@ public class SimpleAnalyticsStreamsApp {
         // aggregate sensor readings by 'endpoint' id
         final KStream<Windowed<AvroKey>, Long> aggregatedReadingsByEP = readings
                 .groupByKey()
-                .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(1)))
+                .windowedBy(TimeWindows.of(Duration.ofMinutes(1)))
                 .count(Materialized.as("aggr-ep"))
                 .toStream();
 
         aggregatedReadingsByEP.print(Printed.toSysOut());
 
-        // aggregate sensor readings by 'endpoint' id and 'path'
+        // aggregate sensor readings by 'endpoint' id and 'path' per minute 
         final KStream<Windowed<AvroKey>, Long> aggregatedReadingByEPAndPath = readings
                 // postfix endpoint key with resource path
                 .selectKey((key, reading) -> {
@@ -98,12 +103,12 @@ public class SimpleAnalyticsStreamsApp {
                     return key;
                 })
                 .groupByKey()
-                .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(1)))
+                .windowedBy(TimeWindows.of(Duration.ofMinutes(1)))
                 .count(Materialized.as("aggr-ep-path"))
                 .toStream();
 
         aggregatedReadingByEPAndPath.print(Printed.toSysOut());
 
-        return new KafkaStreams(builder.build(), new StreamsConfig(config));
+        return new KafkaStreams(builder.build(), config);
     }
 }

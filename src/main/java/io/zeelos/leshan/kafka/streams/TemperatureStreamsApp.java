@@ -14,12 +14,15 @@
 
 package io.zeelos.leshan.kafka.streams;
 
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
-import io.zeelos.leshan.avro.AvroKey;
-import io.zeelos.leshan.avro.resource.AvroResource;
-import io.zeelos.leshan.avro.response.AvroResponseObserve;
-import io.zeelos.leshan.kafka.streams.utils.LeshanTimestampExtractor;
+import static io.zeelos.leshan.kafka.streams.utils.Utils.getResource;
+import static io.zeelos.leshan.kafka.streams.utils.Utils.getValue;
+import static io.zeelos.leshan.kafka.streams.utils.Utils.sslProperties;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
@@ -27,28 +30,34 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.TimeWindowedDeserializer;
+import org.apache.kafka.streams.kstream.TimeWindowedSerializer;
+import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-
-import static io.zeelos.leshan.kafka.streams.utils.Utils.*;
+import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
+import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
+import io.zeelos.leshan.avro.AvroKey;
+import io.zeelos.leshan.avro.resource.AvroResource;
+import io.zeelos.leshan.avro.response.AvroResponseObserve;
+import io.zeelos.leshan.kafka.streams.utils.LeshanTimestampExtractor;
 
 public class TemperatureStreamsApp {
-
     public static void main(String[] args) {
         final String bootstrapServers = args.length > 0 ? args[0] : "localhost:9092";
         final String schemaRegistryUrl = args.length > 1 ? args[1] : "http://localhost:8081";
         final String observationsTopic = args.length > 2 ? args[2] : "iot.server1.observations";
         final String observationsAnalyticTopic = args.length > 3 ? args[3] : "analytics.server1.observations.maxper30sec";
-        final String sslConfigFile = args.length > 4 ? args[4] : "client_security.properties";
+        final String stateDir = args.length > 4 ? args[4] : "/tmp/kafka-streams-leshan";
+        final String sslConfigFile = args.length > 5 ? args[5] : "client_security.properties";
 
         final KafkaStreams streams = buildStream(
                 bootstrapServers,
                 schemaRegistryUrl,
-                "/tmp/kafka-streams",
+                stateDir,
                 observationsTopic,
                 observationsAnalyticTopic,
                 sslProperties(sslConfigFile));
@@ -101,7 +110,7 @@ public class TemperatureStreamsApp {
         // read the source stream
         final KStream<AvroKey, AvroResponseObserve> readings = builder.stream(observationsTopic);
 
-        // calculate max sensor reading by endpoint and path
+        // calculate max sensor reading by endpoint and path over a period of 30 secs 
         final KStream<Windowed<AvroKey>, AvroResponseObserve> maxReadingByEPAndPath = readings
                 .map((key, reading) -> {
                     AvroResource resource = getResource(reading);
@@ -117,7 +126,7 @@ public class TemperatureStreamsApp {
                     return new KeyValue<>(key, reading);
                 })
                 .groupByKey()
-                .windowedBy(TimeWindows.of(TimeUnit.SECONDS.toMillis(30)))
+                .windowedBy(TimeWindows.of(Duration.ofSeconds((30))))
                 .reduce((response1, response2) ->
                                 getValue(response1) > getValue(response2) ? response1 : response2
                         , Materialized.as("max"))
