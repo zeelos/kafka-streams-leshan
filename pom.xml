@@ -1,14 +1,11 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.zeelos.leshan.kafka.streams</groupId>
     <artifactId>kafka-streams-leshan</artifactId>
     <packaging>jar</packaging>
-    <version>0.2-SNAPSHOT</version>
-
+    <version>0.3-SNAPSHOT</version>
     <name>kafka-streams-leshan</name>
     <description>A list of Kafka stream analytic applications interfacing with Leshan streams.</description>
-
     <licenses>
         <license>
             <name>The Apache License, Version 2.0</name>
@@ -16,7 +13,6 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
-
     <developers>
         <developer>
             <id>cvasilak</id>
@@ -24,48 +20,40 @@
             <email>cvasilak@gmail.com</email>
         </developer>
     </developers>
-
     <properties>
-        <kafka.version>2.0.0-cp1</kafka.version>
-        <confluent.version>5.0.0</confluent.version>
+        <kafka.version>2.1.0-cp1</kafka.version>
+        <confluent.version>5.1.0</confluent.version>
         <leshan-avro-shema.version>0.1-SNAPSHOT</leshan-avro-shema.version>
-        <jboss.logging>3.3.0.Final</jboss.logging>
+        <slf4j.version>1.7.25</slf4j.version>
         <junit.version>4.12</junit.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
     <dependencies>
-
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-streams</artifactId>
             <version>${kafka.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-streams-avro-serde</artifactId>
             <version>${confluent.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging</artifactId>
-            <version>${jboss.logging}</version>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.zeelos.leshan.avro</groupId>
             <artifactId>leshan-avro-schema</artifactId>
             <version>${leshan-avro-shema.version}</version>
         </dependency>
-
         <!-- Test dependencies -->
         <dependency>
             <groupId>junit</groupId>
@@ -74,7 +62,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
     <build>
         <plugins>
             <plugin>
@@ -120,6 +107,70 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <executions>
+                    <!--
+                    If your are using SSL authentication enabled Schema Registry, make sure to pass the appropriate parameters
+                    to allow decryption prior to calling 'mvn exec:java'
+
+                    export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/Users/cvasilak/Projects/zeelos/leshan/kafka.client-cloud.truststore.jks \
+                                        -Djavax.net.ssl.trustStorePassword=itsasecret \
+                                        -Djavax.net.ssl.keyStore=/Users/cvasilak/Projects/zeelos/leshan/kafka.client-cloud.keystore.jks \
+                                        -Djavax.net.ssl.keyStorePassword=itsasecret"
+                    -->
+                    <execution>
+                        <id>SimpleAnalyticsStreamsApp</id>
+                        <!--
+                        mvn exec:java@SimpleAnalyticsStreamsApp -Dexec.args="kafka:9092 \
+                                                                            https://schema-registry:8081 \
+                                                                            iot.upboard.observations \
+                                                                            /tmp/kafka-streams-leshan  \
+                                                                            /Users/cvasilak/Projects/zeelos/leshan/client_security_cloud.properties"
+                        -->
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>io.zeelos.leshan.kafka.streams.SimpleAnalyticsStreamsApp</mainClass>
+                            <arguments>
+                                <argument>kafka:9092</argument>
+                                <argument>http://schema-registry:8071</argument>
+                                <argument>iot.upboard.observations</argument>
+                                <argument>/tmp/kafka-streams-leshan</argument>
+                                <argument>client_security.properties</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>TemperatureStreamsApp</id>
+                        <!--
+                        mvn exec:java@TemperatureStreamsApp -Dexec.args="kafka:9092 \ 
+                                                                         https://schema-registry:8081 \
+                                                                         iot.upboard.observations \
+                                                                         analytics.upboard.observations.maxper30sec \
+                                                                         /tmp/kafka-streams-leshan \
+                                                                         /Users/cvasilak/Projects/zeelos/leshan/client_security_cloud.properties"
+                        -->
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>io.zeelos.leshan.kafka.streams.TemperatureStreamsApp</mainClass>
+                            <arguments>
+                                <argument>kafka:9092</argument>
+                                <argument>http://schema-registry:8071</argument>
+                                <argument>iot.upboard.observations</argument>
+                                <argument>analytics.upboard.observations.maxper30sec</argument>
+                                <argument>/tmp/kafka-streams-leshan</argument>
+                                <argument>client_security.properties</argument>
+                            </arguments>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
